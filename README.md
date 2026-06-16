@@ -42,7 +42,7 @@ Streamlit Chat UI
 
 ## Current Status
 
-Milestone 1 complete:
+Milestone 2 complete:
 
 - Project folder created
 - Virtual environment set up
@@ -50,6 +50,10 @@ Milestone 1 complete:
 - Initial folder structure created
 - Basic Streamlit app created
 - Environment variable example added
+- PDF upload added
+- PDF text extraction added
+- Extracted text preview added
+- Basic ingestion tests added
 
 ## How to Run
 
@@ -57,3 +61,20 @@ Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+Run the app:
+
+streamlit run app.py
+
+## Future Features
+
+- Document chunking
+- Embeddings
+- Vector search
+- RAG answer generation
+- Source citations
+- Streamlit chat UI
