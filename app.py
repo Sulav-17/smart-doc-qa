@@ -1,7 +1,10 @@
+import os
+
 import streamlit as st
 from dotenv import load_dotenv
 
 from src.chunking import chunk_document
+from src.embeddings import embed_chunks, get_embedding_model
 from src.ingestion import combine_pages, extract_text_from_pdf
 
 
@@ -19,10 +22,10 @@ st.title("📄 Smart Document Q&A System")
 
 st.write(
     """
-    Upload a PDF, extract its text, and split it into chunks for a future RAG pipeline.
+    Upload a PDF, extract its text, split it into chunks, and generate embeddings.
 
-    In this milestone, we are focusing on document chunking.
-    Embeddings, retrieval, and AI answers will come later.
+    In this milestone, we are focusing on converting chunks into embeddings.
+    Vector search and AI answers will come later.
     """
 )
 
@@ -30,7 +33,8 @@ st.write(
 st.sidebar.header("Project Status")
 st.sidebar.success("Milestone 1: Setup complete")
 st.sidebar.success("Milestone 2: PDF text extraction complete")
-st.sidebar.info("Milestone 3: Document chunking")
+st.sidebar.success("Milestone 3: Document chunking complete")
+st.sidebar.info("Milestone 4: Embeddings setup")
 
 
 st.sidebar.header("Chunk Settings")
@@ -50,6 +54,11 @@ chunk_overlap = st.sidebar.slider(
     value=200,
     step=50,
 )
+
+
+st.sidebar.header("Embedding Settings")
+embedding_model = get_embedding_model()
+st.sidebar.write(f"Model: `{embedding_model}`")
 
 
 uploaded_file = st.file_uploader(
@@ -103,7 +112,7 @@ if uploaded_file:
             st.text_area(
                 "Preview",
                 value=full_text[:5000],
-                height=300,
+                height=250,
             )
 
             if total_characters > 5000:
@@ -118,9 +127,70 @@ if uploaded_file:
                     f"""
                     The document was split into **{total_chunks} chunks**.
 
-                    These chunks will later be converted into embeddings and stored in a vector database.
+                    These chunks can now be converted into embeddings.
                     """
                 )
+
+                api_key_exists = bool(os.getenv("OPENAI_API_KEY"))
+
+                if not api_key_exists:
+                    st.warning(
+                        """
+                        OPENAI_API_KEY was not found.
+
+                        Add your API key to a local `.env` file before generating embeddings.
+                        """
+                    )
+                else:
+                    if st.button("Generate embeddings"):
+                        try:
+                            with st.spinner("Generating embeddings for document chunks..."):
+                                embedded_chunks = embed_chunks(chunks)
+
+                            st.success("Embeddings generated successfully.")
+
+                            embedding_count = len(embedded_chunks)
+                            first_embedding_length = len(
+                                embedded_chunks[0]["embedding"]
+                            )
+
+                            col_a, col_b = st.columns(2)
+
+                            with col_a:
+                                st.metric("Embedded Chunks", embedding_count)
+
+                            with col_b:
+                                st.metric(
+                                    "Embedding Dimensions",
+                                    first_embedding_length,
+                                )
+
+                            with st.expander("Preview first embedded chunk"):
+                                first_chunk = embedded_chunks[0]
+
+                                st.write("Chunk text:")
+                                st.write(first_chunk["text"])
+
+                                st.write("Embedding preview:")
+                                st.write(first_chunk["embedding"][:10])
+
+                                st.caption(
+                                    "Showing only the first 10 numbers from the embedding."
+                                )
+                        except Exception as error:
+                            st.error("Could not generate embeddings.")
+
+                            st.warning(
+                                """
+                                This usually happens when the OpenAI API key is missing,
+                                billing is not enabled, or the account has no remaining API quota.
+
+                                Your PDF extraction and chunking still work.
+                                """
+                            )
+
+                        st.exception(error)
+
 
                 with st.expander("View chunks"):
                     for chunk in chunks:
