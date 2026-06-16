@@ -42,9 +42,7 @@ Streamlit Chat UI
 
 ## Current Status
 
-## Current Status
-
-Milestone 3 complete:
+Milestone 5 complete:
 
 - Project folder created
 - Virtual environment set up
@@ -58,7 +56,9 @@ Milestone 3 complete:
 - Document chunking added
 - Chunk settings added to sidebar
 - Chunk previews added
-- Basic ingestion and chunking tests added
+- OpenAI embeddings module added
+- ChromaDB vector storage added
+- Basic ingestion, chunking, embeddings, and retriever tests added
 
 ## How to Run
 
@@ -77,8 +77,7 @@ streamlit run app.py
 
 ## Future Features
 
-- Embeddings
-- Vector search
+- Vector similarity search
 - RAG answer generation
 - Source citations
 - Streamlit chat UI

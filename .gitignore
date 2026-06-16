@@ -17,3 +17,6 @@ chroma_db/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Chroma local database
+chroma_db/
