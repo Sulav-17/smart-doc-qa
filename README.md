@@ -42,7 +42,9 @@ Streamlit Chat UI
 
 ## Current Status
 
-Milestone 2 complete:
+## Current Status
+
+Milestone 3 complete:
 
 - Project folder created
 - Virtual environment set up
@@ -53,7 +55,10 @@ Milestone 2 complete:
 - PDF upload added
 - PDF text extraction added
 - Extracted text preview added
-- Basic ingestion tests added
+- Document chunking added
+- Chunk settings added to sidebar
+- Chunk previews added
+- Basic ingestion and chunking tests added
 
 ## How to Run
 
@@ -72,7 +77,6 @@ streamlit run app.py
 
 ## Future Features
 
-- Document chunking
 - Embeddings
 - Vector search
 - RAG answer generation
