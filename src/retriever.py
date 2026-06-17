@@ -112,7 +112,14 @@ def prepare_chroma_records(
                 "chunk_id": chunk["chunk_id"],
                 "page_number": chunk["page_number"],
                 "character_count": chunk["character_count"],
-                "embedding_model": chunk.get("embedding_model", "unknown"),
+                "embedding_model": chunk.get(
+                    "embedding_model",
+                    "unknown",
+                ),
+                "embedding_provider": chunk.get(
+                    "embedding_provider",
+                    "unknown",
+                ),
             }
         )
 

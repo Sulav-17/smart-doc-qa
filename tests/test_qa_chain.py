@@ -89,3 +89,73 @@ def test_generate_answer_handles_empty_search_results():
 
     assert result["answer"] == "I do not know based on the provided document."
     assert result["sources"] == []
+
+class FakeOllamaResponse:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {
+            "response": (
+                "RAG retrieves relevant document "
+                "chunks before answering."
+            )
+        }
+
+
+class FakeHttpClient:
+    def __init__(self):
+        self.last_url = None
+        self.last_payload = None
+
+    def post(
+        self,
+        url,
+        json,
+        timeout,
+    ):
+        self.last_url = url
+        self.last_payload = json
+
+        return FakeOllamaResponse()
+
+
+def test_generate_answer_with_local_ollama():
+    fake_http_client = FakeHttpClient()
+
+    result = generate_answer(
+        question="What does RAG do?",
+        search_results=sample_search_results(),
+        provider="local",
+        model="qwen3:4b",
+        base_url="http://localhost:11434",
+        http_client=fake_http_client,
+        prompt_template=(
+            "Context:\n{context}\n"
+            "Question:\n{question}\n"
+            "Answer:"
+        ),
+    )
+
+    assert (
+        "retrieves relevant document chunks"
+        in result["answer"]
+    )
+
+    assert len(result["sources"]) == 1
+
+    assert fake_http_client.last_url == (
+        "http://localhost:11434/api/generate"
+    )
+
+    assert (
+        fake_http_client
+        .last_payload["stream"]
+        is False
+    )
+
+    assert (
+        fake_http_client
+        .last_payload["think"]
+        is False
+    ) 

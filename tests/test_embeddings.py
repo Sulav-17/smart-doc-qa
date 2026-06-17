@@ -74,3 +74,47 @@ def test_embed_chunks_adds_embedding_to_each_chunk():
     assert embedded_chunks[0]["embedding"] == [0.1, 0.2, 0.3]
     assert embedded_chunks[1]["embedding"] == [0.1, 0.2, 0.3]
     assert embedded_chunks[0]["embedding_model"] == "fake-embedding-model"
+
+
+class FakeLocalEmbeddingModel:
+    def encode_document(
+        self,
+        text,
+        normalize_embeddings,
+    ):
+        return [0.1, 0.2, 0.3]
+
+    def encode_query(
+        self,
+        text,
+        normalize_embeddings,
+    ):
+        return [0.4, 0.5, 0.6]
+
+
+def test_create_local_document_embedding():
+    fake_model = FakeLocalEmbeddingModel()
+
+    embedding = create_embedding(
+        text="Document text",
+        provider="local",
+        local_model=fake_model,
+        model="fake-local-model",
+        task="document",
+    )
+
+    assert embedding == [0.1, 0.2, 0.3]
+
+
+def test_create_local_query_embedding():
+    fake_model = FakeLocalEmbeddingModel()
+
+    embedding = create_embedding(
+        text="User question",
+        provider="local",
+        local_model=fake_model,
+        model="fake-local-model",
+        task="query",
+    )
+
+    assert embedding == [0.4, 0.5, 0.6]
