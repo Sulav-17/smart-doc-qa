@@ -1,0 +1,50 @@
+[
+  {
+    "id": "project-problem",
+    "question": "What problem does the Smart Document Q&A System solve?",
+    "expected_behavior": "answer",
+    "expected_pages": [7, 8, 9]
+  },
+  {
+    "id": "project-architecture",
+    "question": "What happens after the embedding model in the Project 2 architecture?",
+    "expected_behavior": "answer",
+    "expected_pages": [8]
+  },
+  {
+    "id": "completion-time",
+    "question": "What is the estimated completion time for the Smart Document Q&A project?",
+    "expected_behavior": "answer",
+    "expected_pages": [9, 10]
+  },
+  {
+    "id": "local-vector-database",
+    "question": "Which vector database is recommended for local learning?",
+    "expected_behavior": "answer",
+    "expected_pages": [44]
+  },
+  {
+    "id": "deployment-recommendation",
+    "question": "What is the deployment recommendation for the Smart Document Q&A project?",
+    "expected_behavior": "answer",
+    "expected_pages": [10]
+  },
+  {
+    "id": "unsupported-favorite-movie",
+    "question": "What is Sulav's favorite movie?",
+    "expected_behavior": "abstain",
+    "expected_pages": []
+  },
+  {
+    "id": "unsupported-weather",
+    "question": "What will the weather be tomorrow?",
+    "expected_behavior": "abstain",
+    "expected_pages": []
+  },
+  {
+    "id": "misleading-premise",
+    "question": "Why does the playbook require Oracle Database for Project 2?",
+    "expected_behavior": "abstain",
+    "expected_pages": []
+  }
+]

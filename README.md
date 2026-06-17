@@ -96,3 +96,20 @@ The application uses:
 
 ```text
 sentence-transformers/all-MiniLM-L6-v2
+
+
+## RAG Evaluation
+
+The repository includes a small end-to-end evaluation set covering:
+
+- Supported factual questions
+- Paraphrased questions
+- Expected source pages
+- Unsupported questions
+- Misleading premises
+- Hallucination refusal behavior
+
+Run the evaluation:
+
+```bash
+python scripts/run_evaluation.py --pdf "sample_docs/Build With AI Playbook.pdf"

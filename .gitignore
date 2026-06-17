@@ -20,3 +20,5 @@ Thumbs.db
 
 # Chroma local database
 chroma_db/
+
+evaluation_chroma_db/
