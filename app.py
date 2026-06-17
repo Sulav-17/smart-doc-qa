@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from src.chunking import chunk_document
 from src.embeddings import create_embedding, embed_chunks, get_embedding_model
 from src.ingestion import combine_pages, extract_text_from_pdf
+from src.qa_chain import generate_answer, get_answer_model
 from src.retriever import (
     get_collection_count,
     preview_collection,
@@ -29,10 +30,9 @@ st.title("📄 Smart Document Q&A System")
 st.write(
     """
     Upload a PDF, extract its text, split it into chunks, generate embeddings,
-    and store them in a local ChromaDB vector database.
+    store them in ChromaDB, retrieve relevant chunks, and generate a grounded answer.
 
-    In this milestone, we are focusing on vector database storage.
-    Vector similarity search and AI answers will come later.
+    In this milestone, we are focusing on RAG answer generation with source passages.
     """
 )
 
@@ -49,13 +49,21 @@ if "chunks" not in st.session_state:
 if "embedded_chunks" not in st.session_state:
     st.session_state.embedded_chunks = []
 
+if "search_results" not in st.session_state:
+    st.session_state.search_results = []
+
+if "rag_answer" not in st.session_state:
+    st.session_state.rag_answer = None
+
 
 st.sidebar.header("Project Status")
 st.sidebar.success("Milestone 1: Setup complete")
 st.sidebar.success("Milestone 2: PDF text extraction complete")
 st.sidebar.success("Milestone 3: Document chunking complete")
 st.sidebar.success("Milestone 4: Embeddings setup complete")
-st.sidebar.info("Milestone 5: ChromaDB vector storage")
+st.sidebar.success("Milestone 5: ChromaDB vector storage complete")
+st.sidebar.success("Milestone 6: Vector similarity search complete")
+st.sidebar.info("Milestone 7: RAG answer generation")
 
 
 st.sidebar.header("Chunk Settings")
@@ -77,9 +85,12 @@ chunk_overlap = st.sidebar.slider(
 )
 
 
-st.sidebar.header("Embedding Settings")
+st.sidebar.header("AI Settings")
 embedding_model = get_embedding_model()
-st.sidebar.write(f"Model: `{embedding_model}`")
+answer_model = get_answer_model()
+
+st.sidebar.write(f"Embedding model: `{embedding_model}`")
+st.sidebar.write(f"Answer model: `{answer_model}`")
 
 
 uploaded_file = st.file_uploader(
@@ -138,7 +149,7 @@ if uploaded_file:
             st.text_area(
                 "Preview",
                 value=full_text[:5000],
-                height=250,
+                height=220,
             )
 
             if total_characters > 5000:
@@ -154,7 +165,7 @@ if uploaded_file:
                     f"""
                     The document was split into **{total_chunks} chunks**.
 
-                    These chunks can now be converted into embeddings.
+                    These chunks can be embedded, stored, searched, and used for grounded answers.
                     """
                 )
 
@@ -165,7 +176,7 @@ if uploaded_file:
                         """
                         OPENAI_API_KEY was not found.
 
-                        Add your API key to a local `.env` file before generating embeddings.
+                        Add your API key to a local `.env` file before generating embeddings or answers.
                         """
                     )
 
@@ -178,6 +189,8 @@ if uploaded_file:
                                 embedded_chunks = embed_chunks(chunks)
 
                             st.session_state.embedded_chunks = embedded_chunks
+                            st.session_state.search_results = []
+                            st.session_state.rag_answer = None
 
                             st.success("Embeddings generated successfully.")
 
@@ -262,63 +275,116 @@ if uploaded_file:
                                     f"Chunk: {metadata['chunk_id']}"
                                 )
 
-                                st.subheader("Similarity Search")
+                        st.subheader("Ask a Question")
 
-                                user_question = st.text_input(
-                                    "Ask a question to retrieve relevant chunks",
-                                    placeholder="Example: What is this document about?",
-                                )
+                        user_question = st.text_input(
+                            "Ask a question about the uploaded document",
+                            placeholder="Example: What is this document about?",
+                        )
 
-                                top_k = st.slider(
-                                    "Number of chunks to retrieve",
-                                    min_value=1,
-                                    max_value=5,
-                                    value=3,
-                                )
+                        top_k = st.slider(
+                            "Number of chunks to retrieve",
+                            min_value=1,
+                            max_value=5,
+                            value=3,
+                        )
 
-                                if st.button("Search similar chunks"):
-                                    if not user_question.strip():
-                                        st.warning("Please enter a question first.")
+                        if st.button("Retrieve relevant chunks"):
+                            if not user_question.strip():
+                                st.warning("Please enter a question first.")
+                            else:
+                                try:
+                                    with st.spinner(
+                                        "Embedding question and searching ChromaDB..."
+                                    ):
+                                        question_embedding = create_embedding(
+                                            user_question
+                                        )
+
+                                        search_results = search_similar_chunks(
+                                            query_embedding=question_embedding,
+                                            top_k=top_k,
+                                        )
+
+                                    st.session_state.search_results = search_results
+                                    st.session_state.rag_answer = None
+
+                                    if not search_results:
+                                        st.warning("No matching chunks found.")
                                     else:
-                                        try:
-                                            with st.spinner("Embedding question and searching ChromaDB..."):
-                                                question_embedding = create_embedding(user_question)
-                                                search_results = search_similar_chunks(
-                                                    query_embedding=question_embedding,
-                                                    top_k=top_k,
-                                                )
+                                        st.success(
+                                            f"Retrieved {len(search_results)} relevant chunks."
+                                        )
 
-                                            if not search_results:
-                                                st.warning("No matching chunks found.")
-                                            else:
-                                                st.success(
-                                                    f"Retrieved {len(search_results)} relevant chunks."
-                                                )
+                                except Exception as error:
+                                    st.error("Could not run similarity search.")
 
-                                                for result in search_results:
-                                                    st.markdown(
-                                                        f"### Page {result['page_number']} — Chunk {result['chunk_id']}"
-                                                    )
+                                    st.warning(
+                                        """
+                                        This usually happens when the OpenAI API key is missing,
+                                        billing is not enabled, or the account has no remaining API quota.
 
-                                                    st.caption(
-                                                        f"Distance: {result['distance']:.4f}"
-                                                    )
+                                        The stored ChromaDB chunks are still valid.
+                                        """
+                                    )
 
-                                                    st.write(result["text"])
+                                    st.exception(error)
 
-                                        except Exception as error:
-                                            st.error("Could not run similarity search.")
+                        if st.session_state.search_results:
+                            st.subheader("Retrieved Chunks")
 
-                                            st.warning(
-                                                """
-                                                This usually happens when the OpenAI API key is missing,
-                                                billing is not enabled, or the account has no remaining API quota.
+                            for result in st.session_state.search_results:
+                                st.markdown(
+                                    f"### Page {result['page_number']} — Chunk {result['chunk_id']}"
+                                )
 
-                                                The stored ChromaDB chunks are still valid.
-                                                """
-                                            )
+                                st.caption(
+                                    f"Distance: {result['distance']:.4f}"
+                                )
 
-                                            st.exception(error)
+                                st.write(result["text"])
+
+                            if st.button("Generate grounded answer"):
+                                try:
+                                    with st.spinner(
+                                        "Generating grounded answer from retrieved chunks..."
+                                    ):
+                                        rag_answer = generate_answer(
+                                            question=user_question,
+                                            search_results=st.session_state.search_results,
+                                        )
+
+                                    st.session_state.rag_answer = rag_answer
+
+                                except Exception as error:
+                                    st.error("Could not generate grounded answer.")
+
+                                    st.warning(
+                                        """
+                                        This usually happens when OpenAI API billing or quota is unavailable.
+
+                                        Your retrieval pipeline is still valid.
+                                        """
+                                    )
+
+                                    st.exception(error)
+
+                        if st.session_state.rag_answer:
+                            st.subheader("Grounded Answer")
+
+                            st.write(st.session_state.rag_answer["answer"])
+
+                            st.subheader("Sources")
+
+                            for source in st.session_state.rag_answer["sources"]:
+                                with st.expander(source["source"]):
+                                    if source["distance"] is not None:
+                                        st.caption(
+                                            f"Similarity distance: {source['distance']:.4f}"
+                                        )
+
+                                    st.write(source["text"])
+
                 with st.expander("View chunks"):
                     for chunk in chunks:
                         st.markdown(
