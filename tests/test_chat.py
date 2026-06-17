@@ -3,6 +3,7 @@ import pytest
 from src.chat import (
     clear_chat_history,
     create_assistant_message,
+    create_ready_message,
     create_user_message,
     get_file_fingerprint,
     initialize_session_state,
@@ -23,7 +24,12 @@ def test_initialize_session_state_adds_defaults():
 def test_initialize_session_state_preserves_existing_values():
     state = {
         "document_ready": True,
-        "messages": [{"role": "user", "content": "Hello"}],
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello",
+            }
+        ],
     }
 
     initialize_session_state(state)
@@ -35,15 +41,25 @@ def test_initialize_session_state_preserves_existing_values():
 def test_file_fingerprint_is_stable():
     file_bytes = b"example PDF bytes"
 
-    first_fingerprint = get_file_fingerprint(file_bytes)
-    second_fingerprint = get_file_fingerprint(file_bytes)
+    first_fingerprint = get_file_fingerprint(
+        file_bytes
+    )
+
+    second_fingerprint = get_file_fingerprint(
+        file_bytes
+    )
 
     assert first_fingerprint == second_fingerprint
 
 
 def test_different_files_have_different_fingerprints():
-    first_fingerprint = get_file_fingerprint(b"first file")
-    second_fingerprint = get_file_fingerprint(b"second file")
+    first_fingerprint = get_file_fingerprint(
+        b"first file"
+    )
+
+    second_fingerprint = get_file_fingerprint(
+        b"second file"
+    )
 
     assert first_fingerprint != second_fingerprint
 
@@ -54,7 +70,9 @@ def test_empty_file_fingerprint_raises_error():
 
 
 def test_create_user_message_cleans_content():
-    message = create_user_message("  What is RAG?  ")
+    message = create_user_message(
+        "  What is RAG?  "
+    )
 
     assert message["role"] == "user"
     assert message["content"] == "What is RAG?"
@@ -67,8 +85,8 @@ def test_create_user_message_rejects_empty_content():
 
 
 def test_create_assistant_message_keeps_sources():
-    answer_result = {
-        "answer": "RAG retrieves relevant document chunks.",
+    result = {
+        "answer": "RAG retrieves relevant passages.",
         "sources": [
             {
                 "source": "Page 1, Chunk 2",
@@ -77,17 +95,31 @@ def test_create_assistant_message_keeps_sources():
         ],
     }
 
-    message = create_assistant_message(answer_result)
+    message = create_assistant_message(result)
 
     assert message["role"] == "assistant"
     assert "retrieves relevant" in message["content"]
     assert len(message["sources"]) == 1
 
 
-def test_clear_chat_history_keeps_document_state():
+def test_create_ready_message_includes_document_name():
+    message = create_ready_message(
+        "report.pdf"
+    )
+
+    assert message["role"] == "assistant"
+    assert "report.pdf" in message["content"]
+
+
+def test_clear_chat_history_keeps_document():
     state = {
         "document_ready": True,
-        "messages": [{"role": "user", "content": "Hello"}],
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello",
+            }
+        ],
     }
 
     clear_chat_history(state)
@@ -96,11 +128,17 @@ def test_clear_chat_history_keeps_document_state():
     assert state["document_ready"] is True
 
 
-def test_reset_document_state_clears_document_and_messages():
+def test_reset_document_state_clears_everything():
     state = {
         "document_ready": True,
         "document_name": "report.pdf",
-        "messages": [{"role": "user", "content": "Hello"}],
+        "document_fingerprint": "abc123",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello",
+            }
+        ],
         "chunks": [{"chunk_id": 1}],
     }
 
@@ -108,5 +146,6 @@ def test_reset_document_state_clears_document_and_messages():
 
     assert state["document_ready"] is False
     assert state["document_name"] is None
+    assert state["document_fingerprint"] is None
     assert state["messages"] == []
     assert state["chunks"] == []

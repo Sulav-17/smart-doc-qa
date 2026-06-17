@@ -85,3 +85,14 @@ streamlit run app.py
 - Multi-document support
 - PDF page citations
 - Local embedding model option
+
+## Local AI Setup
+
+This project runs without paid API access.
+
+### Local Embeddings
+
+The application uses:
+
+```text
+sentence-transformers/all-MiniLM-L6-v2
