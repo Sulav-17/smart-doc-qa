@@ -5,8 +5,9 @@ This module handles:
 - creating a local ChromaDB client
 - storing embedded chunks in a vector database
 - previewing stored chunks
+- searching for similar chunks
 
-This is the fourth step in the RAG pipeline.
+This module powers the retrieval part of RAG.
 """
 
 from typing import Any
@@ -213,3 +214,71 @@ def preview_collection(
         limit=limit,
         include=["documents", "metadatas"],
     )
+
+
+def format_search_results(search_result: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Convert raw ChromaDB query output into clean result dictionaries.
+
+    Args:
+        search_result: Raw result returned by ChromaDB query().
+
+    Returns:
+        List of formatted search results.
+    """
+    formatted_results = []
+
+    ids = search_result.get("ids", [[]])[0]
+    documents = search_result.get("documents", [[]])[0]
+    metadatas = search_result.get("metadatas", [[]])[0]
+    distances = search_result.get("distances", [[]])[0]
+
+    for index, document in enumerate(documents):
+        formatted_results.append(
+            {
+                "id": ids[index],
+                "text": document,
+                "metadata": metadatas[index],
+                "distance": distances[index],
+                "page_number": metadatas[index]["page_number"],
+                "chunk_id": metadatas[index]["chunk_id"],
+            }
+        )
+
+    return formatted_results
+
+
+def search_similar_chunks(
+    query_embedding: list[float],
+    persist_directory: str = DEFAULT_CHROMA_PATH,
+    collection_name: str = DEFAULT_COLLECTION_NAME,
+    top_k: int = 3,
+) -> list[dict[str, Any]]:
+    """
+    Search ChromaDB for chunks similar to a query embedding.
+
+    Args:
+        query_embedding: Embedding for the user's question.
+        persist_directory: Local folder where ChromaDB data is stored.
+        collection_name: Name of the ChromaDB collection.
+        top_k: Number of similar chunks to return.
+
+    Returns:
+        A list of formatted search results.
+    """
+    client = get_chroma_client(persist_directory=persist_directory)
+    collection = get_or_create_collection(
+        client=client,
+        collection_name=collection_name,
+    )
+
+    if collection.count() == 0:
+        return []
+
+    raw_results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"],
+    )
+
+    return format_search_results(raw_results)

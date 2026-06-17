@@ -4,11 +4,12 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.chunking import chunk_document
-from src.embeddings import embed_chunks, get_embedding_model
+from src.embeddings import create_embedding, embed_chunks, get_embedding_model
 from src.ingestion import combine_pages, extract_text_from_pdf
 from src.retriever import (
     get_collection_count,
     preview_collection,
+    search_similar_chunks,
     store_embedded_chunks,
 )
 
@@ -261,6 +262,63 @@ if uploaded_file:
                                     f"Chunk: {metadata['chunk_id']}"
                                 )
 
+                                st.subheader("Similarity Search")
+
+                                user_question = st.text_input(
+                                    "Ask a question to retrieve relevant chunks",
+                                    placeholder="Example: What is this document about?",
+                                )
+
+                                top_k = st.slider(
+                                    "Number of chunks to retrieve",
+                                    min_value=1,
+                                    max_value=5,
+                                    value=3,
+                                )
+
+                                if st.button("Search similar chunks"):
+                                    if not user_question.strip():
+                                        st.warning("Please enter a question first.")
+                                    else:
+                                        try:
+                                            with st.spinner("Embedding question and searching ChromaDB..."):
+                                                question_embedding = create_embedding(user_question)
+                                                search_results = search_similar_chunks(
+                                                    query_embedding=question_embedding,
+                                                    top_k=top_k,
+                                                )
+
+                                            if not search_results:
+                                                st.warning("No matching chunks found.")
+                                            else:
+                                                st.success(
+                                                    f"Retrieved {len(search_results)} relevant chunks."
+                                                )
+
+                                                for result in search_results:
+                                                    st.markdown(
+                                                        f"### Page {result['page_number']} — Chunk {result['chunk_id']}"
+                                                    )
+
+                                                    st.caption(
+                                                        f"Distance: {result['distance']:.4f}"
+                                                    )
+
+                                                    st.write(result["text"])
+
+                                        except Exception as error:
+                                            st.error("Could not run similarity search.")
+
+                                            st.warning(
+                                                """
+                                                This usually happens when the OpenAI API key is missing,
+                                                billing is not enabled, or the account has no remaining API quota.
+
+                                                The stored ChromaDB chunks are still valid.
+                                                """
+                                            )
+
+                                            st.exception(error)
                 with st.expander("View chunks"):
                     for chunk in chunks:
                         st.markdown(
